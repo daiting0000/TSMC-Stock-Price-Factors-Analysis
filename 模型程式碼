@@ -1,0 +1,88 @@
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+from sklearn.tree import DecisionTreeRegressor
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+
+df = pd.read_csv('stock.csv')
+
+# 檢查DataFrame中是否有缺失值
+df.isnull().sum()
+
+# 刪除包含缺失值的行
+df.dropna(inplace=True)
+
+# factors為因子，每一列代表一個因子，每一行代表一個樣本（股票）
+# returns為股票收益率
+factors = df.drop(columns=['2330.TW'])
+returns = df['2330.TW']
+
+# 將數據集分為訓練集和測試集
+X_train, X_test, y_train, y_test = train_test_split(factors, returns, test_size=0.4, random_state=42)
+
+# 對特徵進行標準化
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# 建立第1個模型LinearRegression
+model1 = LinearRegression()
+model1.fit(X_train_scaled, y_train)
+
+# 在測試集上進行預測
+y_pred = model1.predict(X_test_scaled)
+
+# 計算均方誤差
+mse = mean_squared_error(y_test, y_pred)
+print("LR均方誤差:", mse)
+
+# 建立第2個模型DecisionTreeRegressor
+model2 = DecisionTreeRegressor(random_state=42)
+
+# 訓練模型
+model2.fit(X_train, y_train)
+
+# 評估模型
+mse = mean_squared_error(y_test, model2.predict(X_test))
+print("DTR模型的均方誤差:", mse)
+
+# 獲取特徵的重要性
+feature_importance = model.feature_importances_
+
+# 顯示特徵的重要性
+feature_names = factors.columns
+plt.figure(figsize=(12, 6))
+plt.barh(feature_names, feature_importance)
+plt.xlabel('Feature Importance')
+plt.ylabel('Feature')
+plt.title('Feature Importance of Decision Tree Model')
+plt.show()
+
+#繪製散佈圖與趨勢線
+fit = np.polyfit(y_test, y_pred, 1)
+slope, intercept = fit
+plt.scatter(y_test, y_pred, s=50, alpha=0.5)
+plt.plot(y_test, slope * y_test + intercept, color='red', linewidth=2)
+plt.show()
+
+# 建立第3個模型deep learning
+model = Sequential()
+model.add(Dense(40, activation='relu', input_shape=(X_train.shape[1],)))
+model.add(Dropout(0.3))
+model.add(Dense(2, activation='relu'))
+model.add(Dropout(0.3))
+model.add(Dense(1))
+
+# 編譯模型
+model.compile(optimizer='adam', loss='mse')
+
+# 訓練模型
+model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.2)
+
+# 在測試集上評估模型
+mse = model.evaluate(X_test, y_test)
+print("DL模型的均方誤差:", mse)
